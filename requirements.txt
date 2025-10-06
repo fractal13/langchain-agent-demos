@@ -2,6 +2,8 @@ pip
 langchain
 langchain[google-genai,openai,ollama]
 langchain-tavily
+langchain-community
+bs4
 langgraph
 dotenv
 ddgs

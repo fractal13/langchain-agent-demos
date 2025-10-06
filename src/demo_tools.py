@@ -47,6 +47,53 @@ def get_tavily_search_tool():
     )
     return tool
 
+
+from langchain_community.document_loaders import WebBaseLoader
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+
+@tool
+def web_page_loader(url: str) -> str:
+    """
+    Loads and extracts the primary content from a specific URL for deep analysis.
+    Use this tool when you have a specific, direct URL (must start with 'http' or 'https').
+    Returns a summarized portion (first 3000 characters) of the page content.
+    """
+    print(f"\n--- Agent is executing tool: web_page_loader with URL: '{url}' ---")
+    try:
+        # 1. Load the document using WebBaseLoader
+        loader = WebBaseLoader(url)
+        # Using .load() for synchronous loading
+        docs = loader.load()
+
+        if not docs:
+            return f"Could not load any content from the URL: {url}"
+
+        # 2. Split the document to manage token limits (Crucial for large web pages)
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=1500,
+            chunk_overlap=50,
+            # Use common separators to maintain semantic coherence
+            separators=["\n\n", "\n", " ", ""]
+        )
+        split_docs = text_splitter.split_documents(docs)
+
+        # 3. Join the first few chunks to provide a concise summary of the content
+        content = " ".join([doc.page_content for doc in split_docs[:3]])
+
+        # 4. Truncate the content safely for the LLM's context window
+        max_return_length = 3000
+        summary = content[:max_return_length]
+        if len(content) > max_return_length:
+            summary += f"... [Content truncated. Total chunks available: {len(split_docs)}]"
+
+        print("--- Tool execution successful. Returning page content summary to LLM. ---\n")
+        return f"Content loaded from {url}:\n\n{summary}"
+
+    except Exception as e:
+        # Catch common network or parsing errors
+        print(f"--- WebLoader Error: {e} ---")
+        return f"Error occurred during web page loading: {e}. Ensure the URL is accessible and correct."
+
 def main():
     query = "Who is Walt Disney?"
     answer = ddg_search.invoke(query)
@@ -55,6 +102,12 @@ def main():
     tavily = get_tavily_search_tool()
     answer = tavily.invoke(query)
     print(f"tavily: Q: {query} --> A: {answer}")
+
+    url = "https://cs.utahtech.edu/cs/3005/assignments/assignment_09_color_table/"
+    content = web_page_loader.invoke(url)
+    print(f"web page loader: Y: {url} --> C: {content}")
+
+
     return
 
 if __name__ == "__main__":
