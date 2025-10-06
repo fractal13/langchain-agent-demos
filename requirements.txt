@@ -1,0 +1,7 @@
+pip
+langchain
+langchain[google-genai,openai,ollama]
+langchain-tavily
+langgraph
+dotenv
+ddgs
